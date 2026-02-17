@@ -1,0 +1,78 @@
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg: #f8fafc;
+  --text: #1e293b;
+  --white: #ffffff;
+  --border: #e2e8f0;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+}
+
+#root { width: 100%; max-width: 1200px; }
+
+.loading {
+  display: flex;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+}
+
+/* Form Styling */
+.auth-container {
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 2rem;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+input, select {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0 20px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover { background-color: var(--primary-hover); }
+
+/* Table Styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  margin-top: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th { background-color: #f1f5f9; font-weight: 600; }
