@@ -1,4 +1,4 @@
-# Get Your Print
+# Get Your Print.
 
 A simple campus printing web application built using React and Supabase.
 
