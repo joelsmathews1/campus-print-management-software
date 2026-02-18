@@ -221,7 +221,7 @@ export default function Auth() {
       <div style={styles.card}>
         <div style={styles.logo}>
           <div style={styles.logoIcon}>🖨️</div>
-          <span style={styles.logoText}>CampusPrint</span>
+          <span style={styles.logoText}>GetYourPrint</span>
         </div>
         <h1 style={styles.title}>{mode === "login" ? "Welcome back" : "Create account"}</h1>
         <p style={styles.sub}>

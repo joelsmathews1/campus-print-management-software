@@ -70,7 +70,7 @@ export default function Navbar() {
     <nav style={s.nav}>
       <div style={s.logo}>
         <span style={s.logoIcon}>🖨️</span>
-        CampusPrint
+        GetYourPrint
       </div>
       <div style={s.right}>
         <span style={s.email}>{user.email}</span>

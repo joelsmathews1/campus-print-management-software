@@ -237,7 +237,10 @@ export default function StaffDash() {
                 <tr>
                   <th style={s.th}>Student</th>
                   <th style={s.th}>File</th>
+                  <th style={s.th}>Pages</th>
                   <th style={s.th}>Copies</th>
+                  <th style={s.th}>Options</th>
+                  <th style={s.th}>Price</th>
                   <th style={s.th}>Submitted</th>
                   <th style={s.th}>Status</th>
                   <th style={s.th}>Actions</th>
@@ -263,7 +266,28 @@ export default function StaffDash() {
                       </a>
                     </td>
                     <td style={s.td}>
+                      <span style={{ fontWeight: 600 }}>{job.page_count || 1}</span>
+                    </td>
+                    <td style={s.td}>
                       <span style={{ fontWeight: 600 }}>{job.copies}</span>
+                    </td>
+                    <td style={s.td}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        {job.is_colour && (
+                          <span style={{ fontSize: 11, color: "var(--accent)" }}>🎨 Colour</span>
+                        )}
+                        {job.is_double_sided && (
+                          <span style={{ fontSize: 11, color: "var(--green)" }}>📑 Double-sided</span>
+                        )}
+                        {!job.is_colour && !job.is_double_sided && (
+                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>B&W, Single</span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={s.td}>
+                      <span style={{ fontWeight: 700, color: "var(--accent)", fontSize: 15 }}>
+                        ₹{(job.total_price || 0).toFixed(2)}
+                      </span>
                     </td>
                     <td style={s.td}>
                       <span style={s.meta}>{formatDate(job.created_at)}</span>

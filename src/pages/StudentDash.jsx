@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import Navbar from "../components/Navbar";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const STATUS_CONFIG = {
   pending: { label: "Pending", color: "var(--yellow)", bg: "rgba(245,200,66,0.1)", border: "rgba(245,200,66,0.3)" },
@@ -64,6 +68,47 @@ const s = {
     fontWeight: 600,
     transition: "opacity 0.2s",
   },
+  checkboxRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    accentColor: "var(--accent)",
+    cursor: "pointer",
+  },
+  checkLabel: {
+    fontSize: 14,
+    color: "var(--text)",
+    cursor: "pointer",
+    userSelect: "none",
+  },
+  priceBox: {
+    background: "rgba(108,99,255,0.1)",
+    border: "1px solid rgba(108,99,255,0.3)",
+    borderRadius: 10,
+    padding: "14px 16px",
+    marginBottom: 16,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  priceLabel: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  priceAmount: {
+    fontSize: 22,
+    fontWeight: 800,
+    fontFamily: "Syne",
+    color: "var(--accent)",
+  },
   jobsList: { display: "flex", flexDirection: "column", gap: 12 },
   jobCard: {
     background: "var(--surface2)",
@@ -122,9 +167,13 @@ export default function StudentDash() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const [file, setFile] = useState(null);
   const [copies, setCopies] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [isColour, setIsColour] = useState(false);
+  const [isDoubleSided, setIsDoubleSided] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [msg, setMsg] = useState(null);
   const [drag, setDrag] = useState(false);
   const fileRef = useRef();
@@ -132,6 +181,29 @@ export default function StudentDash() {
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  async function extractPageCount(pdfFile) {
+    setExtracting(true);
+    try {
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      setPageCount(pdf.numPages);
+      setExtracting(false);
+      return pdf.numPages;
+    } catch (error) {
+      console.error("Error extracting page count:", error);
+      setMsg({ type: "error", text: "Could not read PDF. Please enter page count manually." });
+      setExtracting(false);
+      return 1;
+    }
+  }
+
+  function calculatePrice() {
+    const pricePerPage = isColour ? 3.0 : 1.5;
+    const effectivePages = isDoubleSided ? pageCount / 2 : pageCount;
+    const total = pricePerPage * effectivePages * copies;
+    return total.toFixed(2);
+  }
 
   async function fetchJobs() {
     setLoading(true);
@@ -148,8 +220,22 @@ export default function StudentDash() {
     e.preventDefault();
     setDrag(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped && dropped.type === "application/pdf") setFile(dropped);
-    else setMsg({ type: "error", text: "Only PDF files are supported." });
+    if (dropped && dropped.type === "application/pdf") {
+      setFile(dropped);
+      extractPageCount(dropped);
+    } else {
+      setMsg({ type: "error", text: "Only PDF files are supported." });
+    }
+  }
+
+  function handleFileSelect(e) {
+    const selected = e.target.files[0];
+    if (selected && selected.type === "application/pdf") {
+      setFile(selected);
+      extractPageCount(selected);
+    } else {
+      setMsg({ type: "error", text: "Only PDF files are supported." });
+    }
   }
 
   async function handleSubmit(e) {
@@ -170,12 +256,17 @@ export default function StudentDash() {
     }
 
     const { data: urlData } = supabase.storage.from("print-files").getPublicUrl(fileName);
+    const totalPrice = parseFloat(calculatePrice());
 
     const { error: insertErr } = await supabase.from("print_job").insert([
       {
         user_id: user.id,
         file_url: urlData.publicUrl,
         copies: parseInt(copies),
+        page_count: parseInt(pageCount),
+        is_colour: isColour,
+        is_double_sided: isDoubleSided,
+        total_price: totalPrice,
         status: "pending",
       },
     ]);
@@ -186,6 +277,9 @@ export default function StudentDash() {
       setMsg({ type: "success", text: "Print job submitted successfully!" });
       setFile(null);
       setCopies(1);
+      setPageCount(1);
+      setIsColour(false);
+      setIsDoubleSided(false);
       fetchJobs();
     }
     setUploading(false);
@@ -235,14 +329,45 @@ export default function StudentDash() {
                   {file ? "File selected" : "Drag & drop a PDF or click to browse"}
                 </p>
                 {file && <p style={s.fileName}>{file.name}</p>}
+                {file && !extracting && (
+                  <p style={{ ...s.fileName, color: "var(--green)", marginTop: 4, fontSize: 12 }}>
+                    ✓ {pageCount} {pageCount === 1 ? "page" : "pages"} detected
+                  </p>
+                )}
+                {extracting && (
+                  <p style={{ ...s.fileName, color: "var(--accent)", marginTop: 4, fontSize: 12 }}>
+                    🔍 Reading PDF...
+                  </p>
+                )}
                 <input
                   ref={fileRef}
                   type="file"
                   accept=".pdf"
                   style={s.fileInput}
-                  onChange={(e) => setFile(e.target.files[0])}
+                  onChange={handleFileSelect}
                 />
               </div>
+
+              <label style={s.label}>
+                Number of Pages {extracting && "(Detecting...)"}
+                {!extracting && file && " (Auto-detected)"}
+              </label>
+              <input
+                style={{
+                  ...s.input,
+                  background: extracting ? "var(--surface2)" : file ? "rgba(62,207,142,0.05)" : "var(--surface2)",
+                  borderColor: file && !extracting ? "rgba(62,207,142,0.3)" : "var(--border)",
+                }}
+                type="number"
+                min={1}
+                max={500}
+                value={extracting ? "..." : pageCount}
+                onChange={(e) => setPageCount(e.target.value)}
+                readOnly={extracting}
+                disabled={extracting}
+                onFocus={(e) => !extracting && (e.target.style.borderColor = "var(--accent)")}
+                onBlur={(e) => !extracting && (e.target.style.borderColor = file ? "rgba(62,207,142,0.3)" : "var(--border)")}
+              />
 
               <label style={s.label}>Number of Copies</label>
               <input
@@ -255,6 +380,37 @@ export default function StudentDash() {
                 onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
                 onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
               />
+
+              <div style={s.checkboxRow}>
+                <input
+                  id="colour"
+                  type="checkbox"
+                  style={s.checkbox}
+                  checked={isColour}
+                  onChange={(e) => setIsColour(e.target.checked)}
+                />
+                <label htmlFor="colour" style={s.checkLabel}>
+                  🎨 Colour Print (+₹1.50/page)
+                </label>
+              </div>
+
+              <div style={s.checkboxRow}>
+                <input
+                  id="double"
+                  type="checkbox"
+                  style={s.checkbox}
+                  checked={isDoubleSided}
+                  onChange={(e) => setIsDoubleSided(e.target.checked)}
+                />
+                <label htmlFor="double" style={s.checkLabel}>
+                  📑 Double-Sided (Half pages charged)
+                </label>
+              </div>
+
+              <div style={s.priceBox}>
+                <span style={s.priceLabel}>Estimated Cost</span>
+                <span style={s.priceAmount}>₹{calculatePrice()}</span>
+              </div>
 
               <button style={s.submitBtn} type="submit" disabled={uploading}>
                 {uploading ? "Uploading…" : "Submit Print Request"}
@@ -313,7 +469,11 @@ export default function StudentDash() {
                 <div style={s.jobLeft}>
                   <span style={s.jobName}>{getFileName(job.file_url)}</span>
                   <span style={s.jobMeta}>
-                    {copies !== job.copies ? `${job.copies} ${job.copies === 1 ? "copy" : "copies"}` : `${job.copies} ${job.copies === 1 ? "copy" : "copies"}`} · {formatDate(job.created_at)}
+                    {job.page_count || 1} pages × {job.copies} {job.copies === 1 ? "copy" : "copies"}
+                    {job.is_colour && " · Colour"}
+                    {job.is_double_sided && " · Double-sided"}
+                    {" · ₹" + (job.total_price || 0).toFixed(2)}
+                    {" · " + formatDate(job.created_at)}
                   </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
